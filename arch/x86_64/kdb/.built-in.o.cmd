@@ -1,0 +1,1 @@
+cmd_arch/x86_64/kdb/built-in.o :=  ld -m elf_x86_64  -r -o arch/x86_64/kdb/built-in.o arch/x86_64/kdb/kdba_bt.o arch/x86_64/kdb/kdba_bp.o arch/x86_64/kdb/kdba_id.o arch/x86_64/kdb/kdba_io.o arch/x86_64/kdb/kdbasupport.o arch/x86_64/kdb/x86_64-dis.o
