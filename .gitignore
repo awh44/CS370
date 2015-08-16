@@ -1,3 +1,10 @@
 a.out
 *.s
 *.o
+*.cmd
+*.mod.*
+*.mod
+*.ko
+.tmp*
+lib/lib.a
+*.bin*
