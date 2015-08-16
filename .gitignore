@@ -1,3 +1,4 @@
+*.swp
 a.out
 *.s
 *.o
@@ -8,3 +9,16 @@ a.out
 .tmp*
 lib/lib.a
 *.bin*
+.missing-syscalls.d
+System.map
+arch/x86_64/boot/compressed/vmlinux
+arch/x86_64/kernel/vmlinux.lds
+arch/x86_64/lib/lib.a
+include/asm-x86_64/asm-offsets.h
+include/linux/compile.h
+kdb/gen-kdb_cmds.c
+usr/.initramfs_data.cpio.gz.d
+vmlinux
+.version
+include/config/auto.conf
+include/linux/autoconf.h
