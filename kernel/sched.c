@@ -7276,4 +7276,9 @@ kdb_runqueue(unsigned long cpu, kdb_printf_t xxx_printf)
 }
 EXPORT_SYMBOL(kdb_runqueue);
 
+asmlinkage long sys_mygetpid(void)
+{
+	return current->tgid;
+}
+
 #endif	/* CONFIG_KDB */
