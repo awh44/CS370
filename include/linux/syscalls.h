@@ -616,6 +616,7 @@ asmlinkage long sys_eventfd(unsigned int count);
 ************************************/
 asmlinkage long sys_mygetpid(void);
 asmlinkage long sys_steal(pid_t pid);
+asmlinkage long sys_quad(pid_t pid);
 /*Finish additions*******************/
 
 int kernel_execve(const char *filename, char *const argv[], char *const envp[]);

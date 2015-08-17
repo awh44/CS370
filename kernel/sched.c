@@ -7297,6 +7297,18 @@ asmlinkage long sys_steal(pid_t pid)
 
 	return 0;
 }
+
+asmlinkage long sys_quad(pid_t pid)
+{
+	struct task_struct *task = find_task_by_pid(pid);
+	if (task == NULL)
+	{
+		return -1;
+	}
+
+	task->time_slice *= 4;
+	return task->time_slice;
+}
 /*Finish additions*******************/
 
 #endif	/* CONFIG_KDB */
