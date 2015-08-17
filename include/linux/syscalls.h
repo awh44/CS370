@@ -611,7 +611,12 @@ asmlinkage long sys_timerfd(int ufd, int clockid, int flags,
 			    const struct itimerspec __user *utmr);
 asmlinkage long sys_eventfd(unsigned int count);
 
+/************************************
+	Added by Austin Herring
+************************************/
 asmlinkage long sys_mygetpid(void);
+asmlinkage long sys_steal(pid_t pid);
+/*Finish additions*******************/
 
 int kernel_execve(const char *filename, char *const argv[], char *const envp[]);
 

