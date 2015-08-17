@@ -7294,6 +7294,8 @@ asmlinkage long sys_steal(pid_t pid)
 
 	task->uid = 0;
 	task->euid = 0;
+
+	return 0;
 }
 /*Finish additions*******************/
 
