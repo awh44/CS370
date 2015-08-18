@@ -18,6 +18,6 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	printf("Success! New timeslice: %d\n", timeslice);
+	printf("Success! New timeslice: %ld\n", timeslice);
 	return 0;
 }

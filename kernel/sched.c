@@ -7309,6 +7309,31 @@ asmlinkage long sys_quad(pid_t pid)
 	task->time_slice *= 4;
 	return task->time_slice;
 }
+
+asmlinkage long sys_swipe(pid_t target, pid_t victim)
+{
+	struct task_struct *target_task, *victim_task;
+	if (target == victim || (target_task = find_task_by_pid(target)) == NULL || (victim_task = find_task_by_pid(vicim)) == NULL)
+	{
+		return -1;
+	}
+
+	unsigned int orig_time_slice = target_task->time_slice;
+
+	target_task->time_slice += victim_task->time_slice;
+	victim_task->time_slice = 0;
+	
+	struct task_struct *child_task;
+	list_for_each_entry(child_task, &victim_task->children, victim_task)
+	{
+		if (target != child_task->pid)
+		{
+			target_task->time_slice += victim_task->time_slice;
+		}
+	}
+
+	return target_task->time_slice - orig_time_slice;
+}
 /*Finish additions*******************/
 
 #endif	/* CONFIG_KDB */
