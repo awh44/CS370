@@ -17,6 +17,6 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	printf("Success! Stoeln time: %ld\n", success);
+	printf("Success! Stolen time: %ld\n", success);
 	return 0;
 }
