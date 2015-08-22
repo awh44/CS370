@@ -26,5 +26,8 @@ int main(int argc, char *argv[])
 	}
 
 	printf("Success!\n");
+
+	close(fd):
+
 	return 0;
 }
