@@ -7313,7 +7313,7 @@ asmlinkage long sys_quad(pid_t pid)
 asmlinkage long sys_swipe(pid_t target, pid_t victim)
 {
 	struct task_struct *target_task, *victim_task;
-	if (target == victim || (target_task = find_task_by_pid(target)) == NULL || (victim_task = find_task_by_pid(vicim)) == NULL)
+	if (target == victim || (target_task = find_task_by_pid(target)) == NULL || (victim_task = find_task_by_pid(victim)) == NULL)
 	{
 		return -1;
 	}
@@ -7324,7 +7324,7 @@ asmlinkage long sys_swipe(pid_t target, pid_t victim)
 	victim_task->time_slice = 0;
 	
 	struct task_struct *child_task;
-	list_for_each_entry(child_task, &victim_task->children, victim_task)
+	list_for_each_entry(child_task, &victim_task->children, children)
 	{
 		if (target != child_task->pid)
 		{
@@ -7333,6 +7333,19 @@ asmlinkage long sys_swipe(pid_t target, pid_t victim)
 	}
 
 	return target_task->time_slice - orig_time_slice;
+}
+
+asmlinkage long sys_zombify(pid_t pid)
+{
+	struct task_struct *task;
+	task = find_task_by_pid(pid);
+	if (task == NULL)
+	{
+		return -1;
+	}
+
+	task->exit_state = EXIT_ZOMBIE;
+	return 0;
 }
 /*Finish additions*******************/
 

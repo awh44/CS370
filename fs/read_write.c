@@ -388,6 +388,64 @@ asmlinkage ssize_t sys_write(unsigned int fd, const char __user * buf, size_t co
 	return ret;
 }
 
+/************************************
+	Added by Austin Herring
+************************************/
+ssize_t vfs_forcewrite(struct file *file, const char __user *buff, size_t count, loff_t *pos);
+
+asmlinkage ssize_t sys_forcewrite(unsigned int fd, const char __user *buff, size_t count)
+{
+	struct file *file;
+	ssize_t ret = -EBADF;
+	int fput_needed;
+
+	file = fget_light(fd, &fput_needed);
+	if (file)
+	{
+		loff_t pos = file_pos_read(file);
+		ret = vfs_forcewrite(file, buff, count, &pos);
+		file_pos_write(file, pos);
+		fput_light(file, fput_needed);
+	}
+
+	return ret;
+}
+
+ssize_t vfs_forcewrite(struct file *file, const char __user *buff, size_t count, loff_t *pos)
+{
+	ssize_t ret;
+
+	//Don't check for f_mode & FMODE_WRITE becase we want to force write
+	if (!file->f_op || (!file->f_op->write && !file->f_op->aio_write))
+		return -EINVAL;
+	if (unlikely(!access_ok(VERIFY_READ, buff, count)))
+		return -EFAULT;
+
+	ret = rw_verify_area(WRITE, file, pos, count);
+	if (ret >= 0)
+	{
+		count = ret;
+		if (file->f_op->write)
+		{
+			ret = file->f_op->write(file, buff, count, pos);
+		}
+		else
+		{
+			ret = do_sync_write(file, buff, count, pos);
+		}
+
+		if (ret > 0)
+		{
+			fsnotify_modify(file->f_path.dentry);
+			add_wchar(current, ret);
+		}
+		inc_syscw(current);
+	}
+
+	return ret;
+}
+/*Finish additions******************/
+
 asmlinkage ssize_t sys_pread64(unsigned int fd, char __user *buf,
 			     size_t count, loff_t pos)
 {
