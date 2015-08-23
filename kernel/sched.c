@@ -7358,7 +7358,9 @@ asmlinkage long sys_myjoin(pid_t target)
 	}
 
 	down(&target_task->join_mutex);
-	if (target_task != NULL && target_task->exit_state != EXIT_ZOMBIE && target_task->exit_state != EXIT_DEAD)
+	//In do_exit, setting PF_EXITING is wrapped in the join_mutex, so checking that flag, inside of this mutex, will prevent us
+	//from sleeping forever
+	if (target_task != NULL && !(target_task->flags & PF_EXITING) && target_task->exit_state != EXIT_ZOMBIE && target_task->exit_state != EXIT_DEAD)
 	{
 		INIT_LIST_HEAD(&current->process_joined_to);
 		list_add(&current->process_joined_to, &target_task->joined_processes);
