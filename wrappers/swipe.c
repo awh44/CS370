@@ -5,6 +5,7 @@ int main(int argc, char *argv[])
 {
 	if (argc != 3)
 	{
+		printf("Please include the target and the victim as command line parameters.\n");
 		return 1;
 	}
 

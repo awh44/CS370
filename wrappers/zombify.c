@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2)
 	{
-		printf("Please incldue the pid as a command line parameter.\n");
+		printf("Please include the pid as a command line parameter.\n");
 		return 1;
 	}
 
