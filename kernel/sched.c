@@ -7351,8 +7351,8 @@ asmlinkage long sys_zombify(pid_t pid)
 asmlinkage long sys_myjoin(pid_t target)
 {
 	struct task_struct *target_task;
-	target = find_task_by_pid(target);
-	if (target == NULL)
+	target_task = find_task_by_pid(target);
+	if (target_task == NULL)
 	{
 		return -1;
 	}
@@ -7362,14 +7362,13 @@ asmlinkage long sys_myjoin(pid_t target)
 	//from sleeping forever
 	if (target_task != NULL && !(target_task->flags & PF_EXITING) && target_task->exit_state != EXIT_ZOMBIE && target_task->exit_state != EXIT_DEAD)
 	{
-		INIT_LIST_HEAD(&current->process_joined_to);
 		list_add(&current->process_joined_to, &target_task->joined_processes);
 		up(&target_task->join_mutex);
-		down(&target_task->joined_processes);
+		down(&target_task->join_semaphore);
 	}
 	else
 	{
-		up(&target_task->join_mutex);
+		printk(KERN_WARNING "Target task is null.");
 		return -1;
 	}
 	

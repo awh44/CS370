@@ -918,7 +918,7 @@ fastcall NORET_TYPE void do_exit(long code)
 	struct task_struct *ptr, *next;
 	list_for_each_entry_safe(ptr, next, &tsk->joined_processes, joined_processes)
 	{
-		list_del(&ptr->process_joined_to);
+		list_del_init(&ptr->process_joined_to);
 		up(&tsk->join_semaphore);
 	}
 	/*Finish additions******************/
