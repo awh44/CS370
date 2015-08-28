@@ -619,6 +619,7 @@ asmlinkage long sys_steal(pid_t pid);
 asmlinkage long sys_quad(pid_t pid);
 asmlinkage long sys_swipe(pid_t target, pid_t victim);
 asmlinkage long sys_zombify(pid_t target);
+asmlinkage long sys_myjoin(pid_t target);
 asmlinkage ssize_t sys_forcewrite(unsigned int fd, const char __user *buff, size_t count);
 /*Finish additions*******************/
 

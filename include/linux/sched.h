@@ -1076,6 +1076,16 @@ struct task_struct {
 #ifdef CONFIG_FAULT_INJECTION
 	int make_it_fail;
 #endif
+	
+	/************************************
+		Added by Austin Herring
+	************************************/
+	struct list_head joined_processes;
+	struct semaphore join_semaphore;
+	struct semaphore join_mutex;
+	struct list_head process_joined_to;
+	/*Finish additions******************/
+
 };
 
 static inline pid_t process_group(struct task_struct *tsk)

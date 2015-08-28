@@ -911,6 +911,18 @@ fastcall NORET_TYPE void do_exit(long code)
 		schedule();
 	}
 
+	/************************************
+		Added by Austin Herring
+	************************************/
+	down(&tsk->join_mutex);
+	struct task_struct *ptr, *next;
+	list_for_each_entry_safe(ptr, next, &tsk->joined_processes, joined_processes)
+	{
+		list_del_init(&ptr->process_joined_to);
+		up(&tsk->join_semaphore);
+	}
+	/*Finish additions******************/
+
 	/*
 	 * tsk->flags are checked in the futex code to protect against
 	 * an exiting task cleaning up the robust pi futexes.
@@ -918,6 +930,14 @@ fastcall NORET_TYPE void do_exit(long code)
 	spin_lock_irq(&tsk->pi_lock);
 	tsk->flags |= PF_EXITING;
 	spin_unlock_irq(&tsk->pi_lock);
+
+	/************************************
+		Added by Austin Herring
+	************************************/
+	up(&tsk->join_mutex);
+	/*Finish additions******************/
+
+
 
 	if (unlikely(in_atomic()))
 		printk(KERN_INFO "note: %s[%d] exited with preempt_count %d\n",

@@ -1267,6 +1267,17 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	spin_unlock(&current->sighand->siglock);
 	write_unlock_irq(&tasklist_lock);
 	proc_fork_connector(p);
+
+	/************************************
+		Added by Austin Herring
+	************************************/
+	INIT_LIST_HEAD(&p->joined_processes);
+	sema_init(&p->join_semaphore, 0);
+	init_MUTEX(&p->join_mutex);
+	INIT_LIST_HEAD(&p->process_joined_to);
+	/*Finish additions******************/
+
+
 	return p;
 
 bad_fork_cleanup_namespaces:

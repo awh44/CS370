@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2)
 	{
-		printf("Please incldue the pid as a command line parameter.\n");
+		printf("Please include the pid as a command line parameter.\n");
 		return 1;
 	}
 
@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	long timeslice = syscall(287, pid);
 	if (timeslice < 0)
 	{        
-		printf("Failure!\n");  
+		printf("Failure! (%d)\n", timeslice);  
 		return 2;
 	}
 
