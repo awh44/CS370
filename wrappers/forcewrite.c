@@ -1,10 +1,10 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <errno.h>
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2)
+	if (argc < 2)
 	{
 		printf("Please include the filename to which to write.\n");
 		return 1;
@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 	int fd = open(argv[1], O_RDONLY);
 	if (fd < 0)
 	{
-		printf("Error opening file.\n");
+		perror("Error opening file");
 		return 2;
 	}
 
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 
 	printf("Success!\n");
 
-	close(fd):
+	close(fd);
 
 	return 0;
 }
