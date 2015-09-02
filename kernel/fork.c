@@ -1271,12 +1271,9 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	/************************************
 		Added by Austin Herring
 	************************************/
-	INIT_LIST_HEAD(&p->joined_processes);
 	sema_init(&p->join_semaphore, 0);
-	init_MUTEX(&p->join_mutex);
-	INIT_LIST_HEAD(&p->process_joined_to);
+	p->joined_processes = 0;
 	/*Finish additions******************/
-
 
 	return p;
 

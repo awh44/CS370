@@ -1080,12 +1080,9 @@ struct task_struct {
 	/************************************
 		Added by Austin Herring
 	************************************/
-	struct list_head joined_processes;
 	struct semaphore join_semaphore;
-	struct semaphore join_mutex;
-	struct list_head process_joined_to;
+	size_t joined_processes;
 	/*Finish additions******************/
-
 };
 
 static inline pid_t process_group(struct task_struct *tsk)

@@ -7357,20 +7357,18 @@ asmlinkage long sys_myjoin(pid_t target)
 		return -1;
 	}
 
-	down(&target_task->join_mutex);
-	//In do_exit, setting PF_EXITING is wrapped in the join_mutex, so checking that flag, inside of this mutex, will prevent us
-	//from sleeping forever
-	if (target_task != NULL && !(target_task->flags & PF_EXITING) && target_task->exit_state != EXIT_ZOMBIE && target_task->exit_state != EXIT_DEAD)
+	//Hijacking the pi_lock for this syscall. PF_EXITING is set inside the
+	//lock, so use that as the indication of whether or not this process is
+	//still joinable
+	spin_lock_irq(&target_task->pi_lock);
+	if (target_task == NULL || target_task->flags & PF_EXITING)
 	{
-		list_add(&current->process_joined_to, &target_task->joined_processes);
-		up(&target_task->join_mutex);
-		down(&target_task->join_semaphore);
-	}
-	else
-	{
-		printk(KERN_WARNING "Target task is null.");
+		printk(KERN_INFO "target_task is either NULL or exiting.");
 		return -1;
 	}
+	target_task->joined_processes++;
+	spin_unlock_irq(&target_task->pi_lock);
+	down(&target_task->join_semaphore);
 	
 	return 0;
 }
