@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@ int main(int argc, char *argv[])
 	long timeslice = syscall(287, pid);
 	if (timeslice < 0)
 	{        
-		printf("Failure! (%d)\n", timeslice);  
+		perror("Failure in quad");
 		return 2;
 	}
 

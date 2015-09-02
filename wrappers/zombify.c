@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@ int main(int argc, char *argv[])
 	long success = syscall(289, pid);
 	if (success < 0)
 	{        
-		printf("Failure!\n");  
+		perror("Failure in zombify");
 		return 2;
 	}
 

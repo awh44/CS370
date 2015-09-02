@@ -1,9 +1,10 @@
+#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[])
 {
-	if (argc != 3)
+	if (argc < 3)
 	{
 		printf("Please include the target and the victim as command line parameters.\n");
 		return 1;
@@ -14,7 +15,7 @@ int main(int argc, char *argv[])
 	long success = syscall(288, target, victim);
 	if (success < 0)
 	{
-		printf("Failure!\n");
+		perror("Failure in swipe");
 		return 2;
 	}
 
