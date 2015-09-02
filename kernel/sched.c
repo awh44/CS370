@@ -7359,9 +7359,11 @@ asmlinkage long sys_myjoin(pid_t target)
 
 	//Hijacking the pi_lock for this syscall. PF_EXITING is set inside the
 	//lock, so use that as the indication of whether or not this process is
-	//still joinable
+	//still joinable. This makes me "nervous", because there's no way to tell
+	//if this memory is still valid before accessing pi_lock, buuuut...at least
+	//it's worked so far.
 	spin_lock_irq(&target_task->pi_lock);
-	if (target_task == NULL || target_task->flags & PF_EXITING)
+	if (target_task->flags & PF_EXITING)
 	{
 		printk(KERN_INFO "target_task is either NULL or exiting.");
 		return -1;
