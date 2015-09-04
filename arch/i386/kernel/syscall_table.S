@@ -323,6 +323,9 @@ ENTRY(sys_call_table)
 	.long sys_signalfd
 	.long sys_timerfd
 	.long sys_eventfd
+	/************************************
+		  Added by Austin Herring
+	************************************/
 	.long sys_mygetpid
 	.long sys_steal		/* 325 */
 	.long sys_quad
@@ -332,3 +335,4 @@ ENTRY(sys_call_table)
 	.long sys_forcewrite		/* 330 */
 	.long sys_mysend
 	.long sys_myreceive
+	/*Finish additions******************/ +

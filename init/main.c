@@ -56,7 +56,11 @@
 #include <linux/device.h>
 #include <linux/kthread.h>
 
+/************************************
+	Added by Austin Herring
+************************************/
 #include <linux/mailbox.h>
+/*Finish additions******************/
 
 #include <asm/io.h>
 #include <asm/bugs.h>
