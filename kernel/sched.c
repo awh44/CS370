@@ -7365,7 +7365,7 @@ asmlinkage long sys_myjoin(pid_t target)
 	spin_lock_irq(&target_task->pi_lock);
 	if (target_task->flags & PF_EXITING)
 	{
-		printk(KERN_INFO "target_task is either NULL or exiting.");
+		printk(KERN_INFO "target_task is either NULL or exiting.\n");
 		return -1;
 	}
 	target_task->joined_processes++;

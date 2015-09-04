@@ -56,6 +56,8 @@
 #include <linux/device.h>
 #include <linux/kthread.h>
 
+#include <linux/mailbox.h>
+
 #include <asm/io.h>
 #include <asm/bugs.h>
 #include <asm/setup.h>
@@ -645,8 +647,14 @@ asmlinkage void __init start_kernel(void)
 	if (late_time_init)
 		late_time_init();
 	calibrate_delay();
+	/************************************
+		Added by Austin Herring
+	************************************/
 	if (printme)
 		printk("Hello World from Me!\n");
+	init_mailbox();
+	/*Finish additions******************/
+
 	pidmap_init();
 	pgtable_cache_init();
 	prio_tree_init();
