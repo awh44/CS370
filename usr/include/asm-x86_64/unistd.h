@@ -630,6 +630,10 @@ __SYSCALL(__NR_signalfd, sys_signalfd)
 __SYSCALL(__NR_timerfd, sys_timerfd)
 #define __NR_eventfd		284
 __SYSCALL(__NR_eventfd, sys_eventfd)
+
+/************************************
+	Added by Austin Herring
+************************************/
 #define __NR_mygetpid       285
 __SYSCALL(__NR_mygetpid, sys_mygetpid)
 #define __NR_steal          286
@@ -648,6 +652,7 @@ __SYSCALL(__NR_forcewrite, sys_forcewrite)
 __SYSCALL(__NR_mysend, sys_mysend)
 #define __NR_myreceive      293
 __SYSCALL(__NR_myreceive, sys_myreceive)
+/*Finish additions*******************/
 
 
 #ifndef __NO_STUBS

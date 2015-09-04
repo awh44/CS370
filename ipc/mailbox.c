@@ -72,7 +72,7 @@ asmlinkage long sys_myreceive(pid_t pid, char __user *buff, size_t n)
 	down(&mailbox.lock);
 	list_for_each_entry_safe(msg, next, &mailbox.message_lists[box], message_list)
 	{
-		if ((pid < 0 || msg->sender == pid) && msg->receiver == current_pid)
+		if (msg->receiver == current_pid && (pid < 0 || msg->sender == pid))
 		{
 			list_del(&msg->message_list);
 			success = 1;
