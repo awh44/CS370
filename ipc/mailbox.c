@@ -91,6 +91,7 @@ asmlinkage long sys_myreceive(pid_t pid, char __user *buff, size_t n)
 		return minimum - uncopied;
 	}
 
-	return -1;
+	//No bytes read
+	return 0;
 }
 /*Finish additions******************/
