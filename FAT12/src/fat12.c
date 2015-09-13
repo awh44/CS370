@@ -42,7 +42,7 @@ uint8_t read_twelve_bits_twice(int fd, uint16_t *integers)
 
 	integers[0] = (((uint16_t) tmp[1] & 0x0f) << 8) | tmp[0];
 	integers[1] = ((uint16_t ) tmp[2] << 4) | ((tmp[1] & 0xf0) >> 4);
-	
+	return 1;
 }
 
 uint8_t read_boot_sector(int fd, boot_t *boot)
