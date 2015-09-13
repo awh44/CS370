@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "fat12.h"
+#include "../include/fat12.h"
 
 //Need a macro (and not a function) to make use of sizeof on the array
 #define READ_INTO_ARRAY(fd, array)\
@@ -30,6 +30,23 @@ uint8_t read_uint16_little_endian(int fd, uint16_t *integer)
 	//Linux on x86-64 is already little endian, so don't actually have to convert
 
 	return 1;
+}
+
+uint8_t read_twelve_bits_twice(int fd, uint16_t *integers)
+{
+	uint8_t tmp[3];
+	if (!READ_INTO_ARRAY(fd, tmp))
+	{
+		return 0;
+	}
+
+	printf("byte 0: 0x%x\n", tmp[0]);
+	printf("byte 1: 0x%x\n", tmp[1]);
+	printf("byte 2; 0x%x\n", tmp[2]);
+
+	integers[0] = (((uint16_t) tmp[1] & 0x0f) << 8) | tmp[0];
+	integers[1] = ((uint16_t ) tmp[2] << 4) | ((tmp[1] & 0xf0) >> 4);
+	
 }
 
 uint8_t read_boot_sector(int fd, boot_t *boot)

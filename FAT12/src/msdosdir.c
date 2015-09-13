@@ -2,7 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-#include "fat12.h"
+#include "../include/fat12.h"
 
 int main(int argc, char *argv[])
 {
