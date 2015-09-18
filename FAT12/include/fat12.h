@@ -26,16 +26,27 @@ typedef struct
 	uint8_t signature[2]; //bytes 510-511 (2 bytes)
 } boot_t;
 
+#define DIR_ENTRY_MEMBER_SIZE 32
 typedef struct
 {
-	char filename[MAX_FILENAME + 1 + MAX_EXTENSION];
-	uint8_t attributes[1];
+	char filename[MAX_FILENAME];
+	char extension[MAX_EXTENSION];
+	uint8_t attributes;
 	uint8_t reserved_bytes[10];
 	uint8_t time[2];
 	uint8_t date[2];
 	uint8_t start_cluster[2];
 	uint8_t filesize[4];
-} directory_t;
+} dir_entry_t;
 
-uint8_t read_boot_sector(int fd, boot_t *boot);
+typedef struct
+{
+	boot_t boot;
+	uint8_t media_descriptor;
+	uint16_t eof_marker;
+	uint16_t *fat_entries;
+} fat12_t;
+
+uint8_t read_fat12(int fd, fat12_t *fat);
+void free_fat12(fat12_t *fat);
 #endif
