@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	fat12_t fat;
 	if (!read_fat12(fd, &fat))
 	{
-		perror("Could not read file system");
+		fprintf(stderr, "Could not read file system.");
 		return SYSTEM_ERROR;
 	}
 
