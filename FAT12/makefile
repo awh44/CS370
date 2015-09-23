@@ -1,5 +1,5 @@
 run: compile
-	./msdosdir.out
+	./msdosdir.out input/samplefat.bin
 
 compile: msdosdir.out
 
