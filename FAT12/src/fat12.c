@@ -18,12 +18,30 @@
 #define FILE_DELETED 0xe5
 #define ENTRY_FREE 0
 
-#define READ_ONLY     1
-#define HIDDEN        2
-#define SYSTEM_FILE   4
-#define VOLUME_LABEL  8
+#define READ_ONLY 1
+#define HIDDEN 2
+#define SYSTEM_FILE 4
+#define VOLUME_LABEL 8
 #define SUBDIRECTORY 16
-#define ARCHIVE      32
+#define ARCHIVE 32
+
+#define SECONDS_BITS_TO_RIGHT 0
+#define SECONDS_MASK 0x1f
+#define MINUTES_BITS_TO_RIGHT 5
+#define MINUTES_MASK (0x2f << MINUTES_BITS_TO_RIGHT)
+#define HOURS_BITS_TO_RIGHT 11
+#define HOURS_MASK (0x1f << HOURS_BITS_TO_RIGHT)
+
+#define BASE_YEAR 1980
+#define DAY_BITS_TO_RIGHT 0
+#define DAY_MASK 0x1f
+#define MONTH_BITS_TO_RIGHT 5
+#define MONTH_MASK (0xf << MONTH_BITS_TO_RIGHT)
+#define YEAR_BITS_TO_RIGHT 9
+#define YEAR_MASK (0x3f << YEAR_BITS_TO_RIGHT)
+
+#define MASK_AND_SHIFT(expr, mask)\
+	(((expr) & mask##_MASK) >> mask##_BITS_TO_RIGHT)
 
 //Reading helper functions
 uint8_t bool_read(int fd, void *array, size_t n);
@@ -37,12 +55,18 @@ uint8_t read_boot_sector(int fd, boot_t *boot);
 uint8_t skip_remaining_boot_sector(int fd, boot_t *boot);
 
 //Directory entry functions
+uint8_t read_directory_entry(int fd, direntry_t *entry);
 uint8_t read_root_directory(int fd, fat12_t *fat);
+uint8_t is_volume_label(direntry_t *entry);
+uint8_t is_entry_free(direntry_t *entry);
 
 //General fat12 functions
-uint8_t read_fat12(int fd, fat12_t *fat);
 uint8_t skip_reserved_sectors(int fd, boot_t *boot);
 uint8_t read_file_allocation_tables(int fd, fat12_t *fat);
+void print_volume_data(fat12_t *fat);
+void print_file_data(fat12_t *fat);
+void print_single_file_data(direntry_t *entry);
+
 
 uint8_t bool_read(int fd, void *array, size_t n)
 {
@@ -119,25 +143,10 @@ uint8_t read_fat12(int fd, fat12_t *fat)
 	fat->fat_entries = NULL;
 	fat->root_dir_entries = NULL;
 
-	uint8_t result = read_boot_sector(fd, &fat->boot) &&
+	return read_boot_sector(fd, &fat->boot) &&
 		skip_reserved_sectors(fd, &fat->boot) &&
-		read_file_allocation_tables(fd, fat);
-
-	if (!result)
-	{
-		return 0;
-	}
-
-	fat->root_dir_entries = malloc(fat->boot.max_root_dir_entries *
-		sizeof *fat->root_dir_entries);
-	if (fat->root_dir_entries == NULL)
-	{
-		return 0;
-	}
-
-	result = read_root_directory(fd, fat);
-
-	return result;
+		read_file_allocation_tables(fd, fat) &&
+		read_root_directory(fd, fat);
 }
 
 uint8_t skip_reserved_sectors(int fd, boot_t *boot)
@@ -198,19 +207,100 @@ uint8_t read_directory_entry(int fd, direntry_t *entry)
 
 uint8_t read_root_directory(int fd, fat12_t *fat)
 {
+	fat->root_dir_entries = malloc(fat->boot.max_root_dir_entries *
+		sizeof *fat->root_dir_entries);
+	if (fat->root_dir_entries == NULL)
+	{
+		return 0;
+	}
+
 	direntry_t *root_dir_entries = fat->root_dir_entries;
 	uint16_t max = fat->boot.max_root_dir_entries;
 	int i;
 	for (i = 0; i < max; i++)
 	{
-		read_directory_entry(fd, root_dir_entries + i);
-		unsigned char *filename = root_dir_entries[i].filename;
-		if (filename[0] != ENTRY_FREE && filename[0] != FILE_DELETED)
+		direntry_t *current_entry = root_dir_entries + i;
+		if (!read_directory_entry(fd, current_entry))
 		{
-			PRINT_ARRAY_NL(root_dir_entries[i].filename);
+			return 0;
 		}
 
+		//If the current entry is free, then all following entries must be as
+		//well
+		if (is_entry_free(current_entry))
+		{
+			break;
+		}
+
+		if (is_volume_label(current_entry))
+		{
+			fat->volume_label = current_entry;
+		}
 	}
+
+	return 1;
+}
+
+uint8_t is_volume_label(direntry_t *entry)
+{
+	return entry->attributes & VOLUME_LABEL;
+}
+
+uint8_t is_entry_free(direntry_t *entry)
+{
+	return entry->filename[0] == ENTRY_FREE;
+}
+
+void print_fat12(fat12_t *fat)
+{
+	print_volume_data(fat);
+	printf("\n");
+	print_file_data(fat);
+}
+
+void print_volume_data(fat12_t *fat)
+{
+	printf("Volume name is ");
+	PRINT_ARRAY(fat->volume_label->filename);
+	PRINT_ARRAY_NL(fat->volume_label->extension);
+}
+
+void print_file_data(fat12_t *fat)
+{
+	uint32_t total_files = 0, total_size = 0;
+	int i;
+	for (i = 0;
+	     i < fat->boot.max_root_dir_entries &&
+	     !is_entry_free(fat->root_dir_entries + i);
+	     i++)
+	{
+		direntry_t *entry = fat->root_dir_entries + i;
+		if (entry->filename[0] != FILE_DELETED && !is_volume_label(entry))
+		{
+			print_single_file_data(entry);
+			total_files++;
+			total_size += entry->filesize;
+		}
+	}
+
+	printf("\n%u file(s), %u bytes\n", total_files, total_size);
+}
+
+void print_single_file_data(direntry_t *entry)
+{
+	PRINT_ARRAY(entry->filename);
+	printf(".");
+	PRINT_ARRAY(entry->extension);
+
+	uint16_t date = entry->date, time = entry->time;
+	printf(" %10u %02u-%02u-%02u %02u:%02u:%02u\n",
+		entry->filesize,
+		MASK_AND_SHIFT(date, MONTH),
+		MASK_AND_SHIFT(date, DAY),
+		MASK_AND_SHIFT(date, YEAR) + BASE_YEAR,
+		MASK_AND_SHIFT(time, HOURS),
+		MASK_AND_SHIFT(time, MINUTES),
+		MASK_AND_SHIFT(time, SECONDS));
 }
 
 void free_fat12(fat12_t *fat)

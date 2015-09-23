@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	print_fat12(&fat);
 	free_fat12(&fat);
-
 	return 0;
 }

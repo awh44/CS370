@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-#define MAX_FILENAME 8
-#define MAX_EXTENSION 3
-
 #define BOOT_MEMBER_SIZE 512
 typedef struct
 {
@@ -29,8 +26,8 @@ typedef struct
 #define DIR_ENTRY_MEMBER_SIZE 32
 typedef struct
 {
-	unsigned char filename[MAX_FILENAME];
-	unsigned char extension[MAX_EXTENSION];
+	unsigned char filename[8];
+	unsigned char extension[3];
 	uint8_t attributes;
 	uint8_t reserved_bytes[10];
 	uint16_t time;
@@ -50,5 +47,6 @@ typedef struct
 } fat12_t;
 
 uint8_t read_fat12(int fd, fat12_t *fat);
+void print_fat12(fat12_t *fat);
 void free_fat12(fat12_t *fat);
 #endif
