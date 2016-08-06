@@ -5,13 +5,13 @@
 #include "fat12.h"
 
 #define USER_ERROR 1
-#define SYSTEM_ERROR 2
+#define SYSTEM_ERROR 2;
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2)
+	if (argc < 3)
 	{
-		printf("Please include the input file as a command line argument.\n");
+		printf("Please include the input file and output directories as command line arguments.\n");
 		return USER_ERROR;
 	}
 
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 		return SYSTEM_ERROR;
 	}
 
-	print_fat12(&fat);
+	extract_files(fd, &fat, argv[2]);
 	free_fat12(&fat);
 	return 0;
 }

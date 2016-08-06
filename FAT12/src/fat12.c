@@ -1,9 +1,10 @@
-#include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "../include/fat12.h"
+#include "fat12.h"
 
 //Need a macro (and not a function) to make use of sizeof on the array
 #define READ_INTO_ARRAY(fd, array)\
@@ -13,7 +14,11 @@
 	printf("%.*s", (int) sizeof(array), (char *) array)
 
 #define PRINT_ARRAY_NL(array)\
-	PRINT_ARRAY(array); printf("\n")
+	do\
+	{\
+		PRINT_ARRAY(array);\
+		printf("\n");\
+	} while (0)\
 
 #define FILE_DELETED 0xe5
 #define ENTRY_FREE 0
@@ -59,6 +64,8 @@ uint8_t read_directory_entry(int fd, direntry_t *entry);
 uint8_t read_root_directory(int fd, fat12_t *fat);
 uint8_t is_volume_label(direntry_t *entry);
 uint8_t is_entry_free(direntry_t *entry);
+uint8_t is_entry_deleted(direntry_t *entry);
+uint8_t is_regular_entry(direntry_t *entry);
 
 //General fat12 functions
 uint8_t skip_reserved_sectors(int fd, boot_t *boot);
@@ -66,7 +73,9 @@ uint8_t read_file_allocation_tables(int fd, fat12_t *fat);
 void print_volume_data(fat12_t *fat);
 void print_file_data(fat12_t *fat);
 void print_single_file_data(direntry_t *entry);
-
+void extract_single_file(int fd, fat12_t *fat, uint16_t i, char *full_name, size_t dirlen);
+void write_cluster(int fatFd, int outFd, uint32_t base_address, uint16_t
+	cluster, uint32_t cluster_size, uint32_t write_size);
 
 uint8_t bool_read(int fd, void *array, size_t n)
 {
@@ -179,7 +188,7 @@ uint8_t read_file_allocation_tables(int fd, fat12_t *fat)
 	{
 		return 0;
 	}
-	
+
 	int i;
 	for (i = 0; i < num_fat_entries; i += 2)
 	{
@@ -251,6 +260,16 @@ uint8_t is_entry_free(direntry_t *entry)
 	return entry->filename[0] == ENTRY_FREE;
 }
 
+uint8_t is_entry_deleted(direntry_t *entry)
+{
+	return entry->filename[0] == FILE_DELETED;
+}
+
+uint8_t is_regular_entry(direntry_t *entry)
+{
+	return !is_volume_label(entry) && !is_entry_deleted(entry);
+}
+
 void print_fat12(fat12_t *fat)
 {
 	print_volume_data(fat);
@@ -275,7 +294,7 @@ void print_file_data(fat12_t *fat)
 	     i++)
 	{
 		direntry_t *entry = fat->root_dir_entries + i;
-		if (entry->filename[0] != FILE_DELETED && !is_volume_label(entry))
+		if (is_regular_entry(entry))
 		{
 			print_single_file_data(entry);
 			total_files++;
@@ -307,4 +326,114 @@ void free_fat12(fat12_t *fat)
 {
 	free(fat->fat_entries);
 	free(fat->root_dir_entries);
+}
+
+void extract_files(int fd, fat12_t *fat, char *out_dir)
+{
+	//plus one for '/'
+	size_t dir_len = strlen(out_dir) + 1;
+	//directory name, file name, '.', extension, '\0'
+	size_t full_len = dir_len + MAX_FILE_NAME + 1 + MAX_EXTENSION + 1;
+	char *full_name = malloc(full_len * sizeof *full_name);
+	if (full_name == NULL)
+	{
+		printf("Could not allocate memory.\n");
+		return;
+	}
+	strcpy(full_name, out_dir);
+	full_name[dir_len - 1] = '/'; //in case the user forgot to add one
+	full_name[dir_len] = '\0';
+
+	uint16_t i = 0;
+	while (fat->boot.max_root_dir_entries &&
+	       !is_entry_free(fat->root_dir_entries + i))
+	{
+		if (is_regular_entry(fat->root_dir_entries + i))
+		{
+			extract_single_file(fd, fat, i, full_name, dir_len);
+		}
+		i++;
+	}
+
+	free(full_name);
+}
+
+void extract_single_file(int fd, fat12_t *fat, uint16_t i, char *full_name, size_t dirlen)
+{
+	direntry_t *entry = fat->root_dir_entries + i;
+
+	unsigned int permissions;
+	if (entry->attributes & READ_ONLY)
+	{
+		permissions = 0444;
+	}
+	else
+	{
+		permissions = 0644;
+	}
+
+	const size_t filename_size = sizeof(entry->filename);
+	const size_t extension_size = sizeof(entry->extension);
+	char *file_start = full_name + dirlen;
+
+	size_t last_nonspace = filename_size - 1;
+	while (last_nonspace >= 0 && entry->filename[last_nonspace] == ' ')
+	{
+		last_nonspace--;
+	}
+	size_t nospace_name_size = last_nonspace + 1;
+	memcpy(file_start, entry->filename, nospace_name_size);
+
+	char empty_extension[extension_size];
+	memset(empty_extension, ' ', extension_size);
+
+	if (memcmp(entry->extension, empty_extension, extension_size) != 0)
+	{
+		memcpy(file_start + nospace_name_size, ".", 1);
+		memcpy(file_start + nospace_name_size + 1, entry->extension, extension_size);
+		file_start[nospace_name_size + 1 + extension_size] = '\0';
+	}
+	else
+	{
+		file_start[nospace_name_size] = '\0';
+	}
+
+	int outFd = open(full_name, O_CREAT | O_TRUNC | O_WRONLY, permissions);
+	if (outFd < 0)
+	{
+		printf("Could not create file with name %s\n", full_name);
+		return;
+	}
+
+	uint16_t cluster = entry->start_cluster;
+	if (cluster != 0)
+	{
+		boot_t *boot = &fat->boot;
+		uint32_t base_address =
+			(boot->reserved_sectors + boot->sectors_per_fat * boot->fat_copies) * boot->bytes_per_sector +
+			boot->max_root_dir_entries * DIR_ENTRY_MEMBER_SIZE;
+
+		uint32_t cluster_size = boot->bytes_per_sector * boot->sectors_per_cluster;
+
+		uint8_t last_cluster;
+		do
+		{
+			uint16_t next_cluster = fat->fat_entries[cluster - 2];
+			last_cluster = next_cluster == fat->eof_marker;
+			uint32_t write_size = last_cluster ? entry->filesize % cluster_size : cluster_size;
+
+			write_cluster(fd, outFd, base_address, cluster, cluster_size, write_size);
+
+			cluster = next_cluster;
+		} while (!last_cluster);
+	}
+}
+
+void write_cluster(int fatFd, int outFd, uint32_t base_address, uint16_t
+	cluster, uint32_t cluster_size, uint32_t write_size)
+{
+	lseek(fatFd, base_address + cluster_size * (cluster - 2), SEEK_SET);
+	char *buff = malloc(cluster_size * sizeof *buff);
+	read(fatFd, buff, cluster_size);
+	write(outFd, buff, write_size);
 }
