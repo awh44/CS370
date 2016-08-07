@@ -1,0 +1,35 @@
+hello: WHATWHAT
+
+inc R0
+
+; This is a comment! Hopefully nothing happens here!
+
+dec
+
+$38187
+
+__BHI
+
+#FFFFF
+
+inc
+R0
+_go_here:
+add
+R8
+,
+$00010
+R10
+
+;These are
+;three consecutive
+;comments!
+
+;interspersed with
+
+
+;whitespace!
+
+#FF70
+
+add R0, R1 sub ($33210), R7
