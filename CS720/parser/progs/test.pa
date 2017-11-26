@@ -10,7 +10,7 @@ $38187
 
 __BHI
 
-#FFFFF
+#FFFF;F
 
 inc
 R0
@@ -33,3 +33,5 @@ R10
 #FF70
 
 add R0, R1 sub ($33210), R7
+
+add R0 + $00010, R37

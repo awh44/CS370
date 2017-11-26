@@ -19,10 +19,11 @@ static unsigned short in_range(char c, char lo, char hi);
 static unsigned short is_hexi_digit(char c);
 static unsigned short is_register(string_t *reg);
 static void lex_get_character_tok(lex_t *lex, tok_t *tok, tok_type_t type);
+static unsigned short lex_is_next_separator(lex_t *lex);
+static void lex_skip_insignificant(lex_t *lex);
 
-static void lex_skip_whitespace(lex_t *lex);
-static void lex_skip_comment(lex_t *lex);
 static void lex_get_eof(lex_t *lex, tok_t *tok);
+static void lex_get_newline(lex_t *lex, tok_t *tok);
 static void lex_get_lparen(lex_t *lex, tok_t *tok);
 static void lex_get_rparen(lex_t *lex, tok_t *tok);
 static void lex_get_colon(lex_t *lex, tok_t *tok);
@@ -30,7 +31,7 @@ static void lex_get_comma(lex_t *lex, tok_t *tok);
 static void lex_get_plus(lex_t *lex, tok_t *tok);
 static status_t lex_get_hexi(lex_t *lex, tok_t *tok);
 static status_t lex_get_deci(lex_t *lex, tok_t *tok);
-static void lex_get_ident(lex_t *lex, tok_t *tok);
+static status_t lex_get_ident_like(lex_t *lex, tok_t *tok);
 
 static char *reserved_words[] =
 {
@@ -116,7 +117,7 @@ lex_t *lex_initialize(FILE *stream)
 			goto error3;
 		}
 	}
-	
+
 	string_uninitialize(str);
 	goto success;
 
@@ -128,7 +129,7 @@ error1:
 	free(lex);
 error0:
 	lex = NULL;
-	
+
 success:
 	return lex;
 }
@@ -146,102 +147,76 @@ status_t lex_get_next_token(lex_t *lex, tok_t **tok)
 	*tok = tok_initialize();
 	if (*tok == NULL)
 	{
-		error = OUT_OF_MEM;
-		goto exit0;
+		return OUT_OF_MEM;
 	}
 
 	//Start by getting the first character to be analyzed
 	lex->next = getc(lex->stream);
-	lex_skip_whitespace(lex);
-
-	//Comments aren't part of the grammar - just keep eating them in
-	//the lexer until we don't have a comment or whitespace
-	while (lex->next == ';')
-	{
-		lex_skip_comment(lex);
-		lex_skip_whitespace(lex);
-	}
 
 	if (lex->next == EOF)
 	{
 		lex_get_eof(lex, *tok);
-		goto exit0;
 	}
-
-	//Get some more literal characters in the next block
-	if (lex->next == '(')
+	else if (lex->next == '\n')
+	{
+		lex_get_newline(lex, *tok);
+	}
+	else if (lex->next == '(')
 	{
 		lex_get_lparen(lex, *tok);
-		goto exit0;
 	}
-
-	if (lex->next == ')')
+	else if (lex->next == ')')
 	{
 		lex_get_rparen(lex, *tok);
-		goto exit0;
 	}
-
-	if (lex->next == ':')
+	else if (lex->next == ':')
 	{
 		lex_get_colon(lex, *tok);
-		goto exit0;
 	}
-
-	if (lex->next == ',')
+	else if (lex->next == ',')
 	{
 		lex_get_comma(lex, *tok);
-		goto exit0;
 	}
-
-	/*
-	if (lex->next == '+')
+	else if (lex->next == '+')
 	{
 		lex_get_plus(lex, *tok);
-		goto exit0;
-	}*/
-
-	//Handle the literal numbers in the next two if statements
-	if (lex->next == '#')
+	}
+	else if (lex->next == '#')
 	{
-		error = lex_get_hexi(lex, *tok);
-		if (error)
+		if ((error = lex_get_hexi(lex, *tok)))
 		{
-			fprintf(stderr, "Unexpected character in HEXI: %c. Must have form #WXYZ", lex->next);
-			goto unexpected;
+			fprintf(stderr, "Unexpected character in HEXI: %c. Must have form #WXYZ\n", lex->next);
+			tok_uninitialize(*tok);
 		}
-		goto exit0;
 	}
-
-	if (lex->next == '$')
+	else if (lex->next == '$')
 	{
-		error = lex_get_deci(lex, *tok);
-		if (error)
+		if ((error = lex_get_deci(lex, *tok)))
 		{
-			fprintf(stderr, "Unexpected character in DECI: %c. Must have form $VWYXZ\n", lex->next);
-			goto unexpected;
+			fprintf(stderr, "Unexpected character in DECI: %c. Must have form $VWXYZ\n", lex->next);
+			tok_uninitialize(*tok);
 		}
-
-		goto exit0;
 	}
-	
-	//Everything either IS an identifier or looks like one (registers and instructions),
-	//so "get it" as an identifer, but, in the function, it is checked against the keywords
-	//and against the possible registers. All of these must start with an alpha or a "-",
-	//so make sure before going into the function
-	if (isalpha(lex->next) || lex->next == '_')
+	else if (isalpha(lex->next) || (lex->next == '_'))
 	{
-		lex_get_ident(lex, *tok);
-		goto exit0;
+		//Everything either IS an identifier or looks like one (registers and instructions),
+		//so "get it" as an identifer, but, in the function, it is checked against the keywords
+		//and against the possible registers. All of these must start with an alpha or a "_",
+		//so make sure before going into the function
+		if ((error = lex_get_ident_like(lex, *tok)))
+		{
+			fprintf(stderr, "Unexpected character in identifier-like token: %c\n", lex->next);
+			tok_uninitialize(*tok);
+		}
+	}
+	else
+	{
+		//If we matched nothing else, that means we've got an unexpected character here.
+		error = UNEXPECTED_CHAR;
+		fprintf(stderr, "Unexpected character: %c\n", lex->next);
+		tok_uninitialize(*tok);
 	}
 
-	//If we matched nothing else, that means we've got an unexpected character here.
-	error = UNEXPECTED_CHAR;
-	fprintf(stderr, "Unexpected character: %c\n", lex->next);
-unexpected:
-	tok_uninitialize(*tok);
-	*tok = NULL;
-
-exit0:
 	return error;
 }
 
@@ -259,29 +234,74 @@ static unsigned short is_register(string_t *s)
 {
 	return string_length(s) == 2 &&
 		string_get(s, 0) == 'R' &&
-		in_range(string_get(s, 1), '0', '8');
-}
-
-static void lex_skip_comment(lex_t *lex)
-{
-	while (lex->next != '\n' && lex->next != EOF)
-	{
-		lex->next = getc(lex->stream);
-	}
-}
-
-static void lex_skip_whitespace(lex_t *lex)
-{
-	while (isspace(lex->next))
-	{
-		lex->next = getc(lex->stream);
-	}
+		in_range(string_get(s, 1), '0', '7');
 }
 
 static void lex_get_character_tok(lex_t *lex, tok_t *tok, tok_type_t type)
 {
 	tok_set_type(tok, type);
 	tok_value_append(tok, lex->next);
+}
+
+static unsigned short lex_is_next_separator(lex_t *lex)
+{
+	char next = getc(lex->stream);
+	unsigned short is_next_separator = isspace(next) || (next == ';') || (next == ':') || (next == ',') || (next == ')') || (next == '+');
+	ungetc(next, lex->stream);
+	return is_next_separator;
+}
+
+static void lex_skip_insignificant(lex_t *lex)
+{
+	//Whitespace that *isn't* newlines are insignificant. However, newlines are used to delineate
+	//instructions, so they are significant, and cannot be skipped
+	char next = getc(lex->stream);
+	while (isspace(next) && (next != '\n'))
+	{
+		next = getc(lex->stream);
+	}
+
+	//If we hit a comment while skipping over whitespace, then continue to the end of the line
+	if (next == ';')
+	{
+		do
+		{
+			next = getc(lex->stream);
+		} while (next != '\n');
+	}
+
+	// Will have end up getting one more character that is *not* a space/part of a comment,
+	// so put it back
+	ungetc(next, lex->stream);
+}
+
+static void lex_get_newline(lex_t *lex, tok_t *tok)
+{
+	lex_get_character_tok(lex, tok, NEWLINE);
+
+	char next = getc(lex->stream);
+	unsigned short more_after_comment = 1;
+	while (more_after_comment)
+	{
+		while (isspace(next))
+		{
+			next = getc(lex->stream);
+		}
+
+		if (next == ';')
+		{
+			do
+			{
+				next = getc(lex->stream);
+			} while (next != '\n');
+		}
+		else
+		{
+			more_after_comment = 0;
+		}
+	}
+
+	ungetc(next, lex->stream);
 }
 
 static void lex_get_eof(lex_t *lex, tok_t *tok)
@@ -292,32 +312,37 @@ static void lex_get_eof(lex_t *lex, tok_t *tok)
 static void lex_get_lparen(lex_t *lex, tok_t *tok)
 {
 	lex_get_character_tok(lex, tok, LPAREN);
+	lex_skip_insignificant(lex);
 }
 
 static void lex_get_rparen(lex_t *lex, tok_t *tok)
 {
 	lex_get_character_tok(lex, tok, RPAREN);
+	lex_skip_insignificant(lex);
 }
 
 static void lex_get_colon(lex_t *lex, tok_t *tok)
 {
 	lex_get_character_tok(lex, tok, COLON);
+	lex_skip_insignificant(lex);
 }
 
 static void lex_get_comma(lex_t *lex, tok_t *tok)
 {
 	lex_get_character_tok(lex, tok, COMMA);
+	lex_skip_insignificant(lex);
 }
 
 static void lex_get_plus(lex_t *lex, tok_t *tok)
 {
 	lex_get_character_tok(lex, tok, PLUS);
+	lex_skip_insignificant(lex);
 }
 
 static status_t lex_get_hexi(lex_t *lex, tok_t *tok)
-{	
+{
 	status_t error = SUCCESS;
-	
+
 	tok_set_type(tok, HEXI);
 
 	size_t i;
@@ -333,15 +358,23 @@ static status_t lex_get_hexi(lex_t *lex, tok_t *tok)
 		tok_value_append(tok, lex->next);
 	}
 
+	if (!lex_is_next_separator(lex))
+	{
+		error = UNEXPECTED_CHAR;
+		goto exit0;
+	}
+
+	lex_skip_insignificant(lex);
+
 exit0:
 	return error;
 }
 
 static status_t lex_get_deci(lex_t *lex, tok_t *tok)
-{	
+{
 	status_t error = SUCCESS;
 	tok_set_type(tok, DECI);
-	
+
 	size_t i;
 	for (i = 0; i < 5; i++)
 	{
@@ -363,12 +396,22 @@ static status_t lex_get_deci(lex_t *lex, tok_t *tok)
 		goto exit0;
 	}
 
+	if (!lex_is_next_separator(lex))
+	{
+		error = UNEXPECTED_CHAR;
+		goto exit0;
+	}
+
+	lex_skip_insignificant(lex);
+
 exit0:
 	return error;
 }
 
-static void lex_get_ident(lex_t *lex, tok_t *tok)
+static status_t lex_get_ident_like(lex_t *lex, tok_t *tok)
 {
+	status_t error = SUCCESS;
+
 	tok_value_append(tok, lex->next);
 	lex->next = getc(lex->stream);
 
@@ -379,6 +422,11 @@ static void lex_get_ident(lex_t *lex, tok_t *tok)
 	}
 	//Got one character that's not an alphanum or a '_', so put it back
 	ungetc(lex->next, lex->stream);
+
+	if (!lex_is_next_separator(lex))
+	{
+		return UNEXPECTED_CHAR;
+	}
 
 	//The registers and instructions look just like identifiers, so need
 	//to check the format for registers and the hash map for instructions.
@@ -395,4 +443,8 @@ static void lex_get_ident(lex_t *lex, tok_t *tok)
 	}
 
 	tok_set_type(tok, type);
+
+	lex_skip_insignificant(lex);
+
+	return error;
 }
